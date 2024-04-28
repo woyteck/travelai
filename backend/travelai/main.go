@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/lpernett/godotenv"
-	"woyteck.pl/trip-ai/openai"
+	"woyteck.pl/travelai/openai"
 )
 
 func main() {
