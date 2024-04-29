@@ -5,6 +5,7 @@ import * as FileSystem from "expo-file-system"
 import {Audio} from "expo-av";
 import { writeAudioToFile } from "../utils/writeAudioToFile";
 import { playFromPath } from "../utils/playFromPath";
+import { fetchAudio } from "../utils/fetchAudio";
 
 Audio.setAudioModeAsync({
   allowsRecordingIOS: false,
@@ -33,26 +34,26 @@ export default function MainScreen() {
   }
 
   const handleSubmit = async () => {
-      if (!state.results[0]) {
-        return;
-      }
+    if (!state.results[0]) {
+      return;
+    }
 
-      try {
-        const audioBlob = await fetchAudio(state.results[0]);
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          if (e.target && typeof e.target.result === "string") {
-            const audioData = e.target.result.split(",")[1];
-            const path = await writeAudioToFile(audioData);
-            setUrlPath(path)
-            await playFromPath(path);
-            destroyRecognizer();
-          }
-        };
-        reader.readAsDataURL(audioBlob);
-      } catch(err) {
-        console.log(err);
-      }
+    try {
+      const audioBlob = await fetchAudio(state.results[0]);
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        if (e.target && typeof e.target.result === "string") {
+          const audioData = e.target.result.split(",")[1];
+          const path = await writeAudioToFile(audioData);
+          setUrlPath(path)
+          await playFromPath(path);
+          destroyRecognizer();
+        }
+      };
+      reader.readAsDataURL(audioBlob);
+    } catch(err) {
+      console.log(err);
+    }
   }
 
   return (
