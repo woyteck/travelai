@@ -17,8 +17,8 @@ type ImageMessage struct {
 }
 
 type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role    string `json:"role" db:"role"`
+	Content string `json:"content" db:"content"`
 }
 
 type ImageURL struct {

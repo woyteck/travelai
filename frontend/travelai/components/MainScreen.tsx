@@ -6,6 +6,7 @@ import {Audio} from "expo-av";
 import { writeAudioToFile } from "../utils/writeAudioToFile";
 import { playFromPath } from "../utils/playFromPath";
 import { fetchAudio } from "../utils/fetchAudio";
+import { fetchConversation } from "../utils/fetchConversation";
 
 Audio.setAudioModeAsync({
   allowsRecordingIOS: false,
@@ -19,6 +20,7 @@ export default function MainScreen() {
   const [borderColor, setBorderColor] = useState<"lightgray" | "lightgreen">("lightgray");
   const {state, startRecognizing, stopRecognizing, destroyRecognizer} = useVoiceRecognition();
   const [urlPath, setUrlPath] = useState("");
+  const [convId, setConvId] = useState("");
 
   const listFiles = async () => {
     try {
@@ -39,7 +41,25 @@ export default function MainScreen() {
     }
 
     try {
-      const audioBlob = await fetchAudio(state.results[0]);
+      if (convId) {
+        talk(state.results[0], convId);
+      } else {
+        const convResponse = await fetchConversation()
+        if (convResponse?.conversation?.id) {
+          console.log(convResponse.conversation.id);
+          setConvId(convResponse.conversation.id);
+          talk(state.results[0], convResponse.conversation.id);
+        }
+      }
+    } catch(err) {
+      console.log(err);
+    }
+  }
+
+  const talk = async (prompt: string, convId: string) => {
+    console.log(convId, prompt);
+
+    const response: any = await fetchAudio(prompt, convId);
       const reader = new FileReader();
       reader.onload = async (e) => {
         if (e.target && typeof e.target.result === "string") {
@@ -50,10 +70,7 @@ export default function MainScreen() {
           destroyRecognizer();
         }
       };
-      reader.readAsDataURL(audioBlob);
-    } catch(err) {
-      console.log(err);
-    }
+      reader.readAsDataURL(response);
   }
 
   return (
