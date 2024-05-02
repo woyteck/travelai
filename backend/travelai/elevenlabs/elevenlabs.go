@@ -30,7 +30,9 @@ type TextToSpeechRequest struct {
 }
 
 func TextToSpeech(text string) []byte {
-	url := "https://api.elevenlabs.io/v1/text-to-speech/ErXwobaYiN019PkySvjV"
+	// voicd := "ErXwobaYiN019PkySvjV" //Antoni
+	voice := "iP95p4xoKVk53GoZ742B" //Chris
+	url := fmt.Sprintf("https://api.elevenlabs.io/v1/text-to-speech/%v", voice)
 
 	request := TextToSpeechRequest{
 		Text:    text,
