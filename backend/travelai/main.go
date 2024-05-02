@@ -64,11 +64,9 @@ func main() {
 
 		completions := openai.GetCompletionShort(conv.Messages, "gpt-4-turbo")
 		answer := completions.Choices[0].Message.Content
-
 		openai.AddMessaage(db, conv.Id, "assistant", answer)
 
 		b := elevenlabs.TextToSpeech(answer)
-
 		c.Data(http.StatusOK, "audio/mpeg", b)
 	})
 	r.Run()

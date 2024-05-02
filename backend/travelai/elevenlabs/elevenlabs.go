@@ -11,10 +11,10 @@ import (
 )
 
 type VoiceSettings struct {
-	Stability       int  `json:"stability"`
-	SimilarityBoost int  `json:"similarity_boost"`
-	Style           int  `json:"style"`
-	UseSpeakerBoost bool `json:"use_speaker_boost"`
+	Stability       float64 `json:"stability"`
+	SimilarityBoost float64 `json:"similarity_boost"`
+	Style           float64 `json:"style"`
+	UseSpeakerBoost bool    `json:"use_speaker_boost"`
 }
 
 type PronunciationDictionaryLocator struct {
@@ -36,7 +36,13 @@ func TextToSpeech(text string) []byte {
 
 	request := TextToSpeechRequest{
 		Text:    text,
-		ModelId: "eleven_multilingual_v1",
+		ModelId: "eleven_multilingual_v2",
+		VoiceSettings: VoiceSettings{
+			Stability:       0.5,
+			SimilarityBoost: 0,
+			Style:           0,
+			UseSpeakerBoost: false,
+		},
 	}
 
 	postBody, _ := json.Marshal(request)
@@ -53,7 +59,7 @@ func TextToSpeech(text string) []byte {
 	}
 
 	defer response.Body.Close()
-	fmt.Println(response.StatusCode)
+
 	if response.StatusCode >= 400 {
 		body, err := io.ReadAll(response.Body)
 		if err != nil {
