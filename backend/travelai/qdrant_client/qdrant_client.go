@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 type Qdrant struct {
 }
 
 type Point struct {
-	Id      int            `json:"id"`
+	Id      uuid.UUID      `json:"id"`
 	Vector  []float64      `json:"vector"`
 	Payload map[string]any `json:"payload"`
 }
@@ -39,7 +41,7 @@ type SearchRequest struct {
 }
 
 type SearchResult struct {
-	Id      int            `json:"id"`
+	Id      uuid.UUID      `json:"id"`
 	Score   float64        `json:"score"`
 	Payload map[string]any `json:"payload"`
 	Version int            `json:"version"`
@@ -55,7 +57,7 @@ func NewClient() *Qdrant {
 	return &Qdrant{}
 }
 
-func (qdrant *Qdrant) UpsertPoints(collectionName string, vector []float64, id int, payload map[string]any) UpsertPointsResponse {
+func (qdrant *Qdrant) UpsertPoints(collectionName string, vector []float64, id uuid.UUID, payload map[string]any) UpsertPointsResponse {
 	url := fmt.Sprintf("http://localhost:6333/collections/%v/points?wait=true", collectionName)
 
 	request := UpsertPointsRequest{
@@ -117,7 +119,7 @@ func (qdrant *Qdrant) Search(collectionName string, vector []float64, resultsCou
 	var result SearchResponse
 	err = json.NewDecoder(response.Body).Decode(&result)
 	if err != nil {
-		log.Fatal("Can not unmarshall JSON")
+		log.Fatal(err)
 	}
 
 	return result

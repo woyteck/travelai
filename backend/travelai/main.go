@@ -9,7 +9,9 @@ import (
 	"github.com/lpernett/godotenv"
 	"woyteck.pl/travelai/db"
 	"woyteck.pl/travelai/elevenlabs"
+	"woyteck.pl/travelai/memory"
 	"woyteck.pl/travelai/openai"
+	"woyteck.pl/travelai/prompts"
 )
 
 type TalkRequest struct {
@@ -61,6 +63,20 @@ func main() {
 		conv := openai.GetConversation(db, request.ConversationId)
 		openai.AddMessaage(db, conv.Id, "user", request.Text)
 		conv.Messages = append(conv.Messages, openai.Message{Role: "user", Content: request.Text})
+
+		category := prompts.ClassifyQuestion(request.Text)
+		fmt.Println(category)
+		if category == "info" {
+			memory.Remember(request.Text)
+			fmt.Println("remembered: ", request.Text)
+		}
+
+		if category == "question" {
+			recalled := memory.Recall(request.Text)
+			fmt.Println("Recalled: " + recalled)
+			openai.AddMessaage(db, conv.Id, "system", recalled)
+			conv.Messages = append(conv.Messages, openai.Message{Role: "system", Content: recalled})
+		}
 
 		completions := openai.GetCompletionShort(conv.Messages, "gpt-4-turbo")
 		answer := completions.Choices[0].Message.Content
