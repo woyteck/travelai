@@ -27,5 +27,9 @@ func Recall(text string) string {
 	}
 	payload := response.Result[0].Payload
 
+	if response.Result[0].Score < 0.8 {
+		return ""
+	}
+
 	return payload["info"].(string)
 }
