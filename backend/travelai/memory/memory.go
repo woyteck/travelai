@@ -2,6 +2,7 @@ package memory
 
 import (
 	"database/sql"
+	"os"
 	"strings"
 	"time"
 
@@ -22,7 +23,10 @@ type Memory struct {
 }
 
 func Remember(info string) {
-	vector := openai.GetEmbedding(info, "text-embedding-ada-002")
+	client := openai.New(openai.Config{
+		ApiKey: os.Getenv("OPENAI_API_KEY"),
+	})
+	vector := client.GetEmbedding(info, "text-embedding-ada-002")
 
 	qdrant := qdrant_client.NewClient()
 
@@ -33,7 +37,10 @@ func Remember(info string) {
 }
 
 func Recall(text string) string {
-	vector := openai.GetEmbedding(text, "text-embedding-ada-002")
+	client := openai.New(openai.Config{
+		ApiKey: os.Getenv("OPENAI_API_KEY"),
+	})
+	vector := client.GetEmbedding(text, "text-embedding-ada-002")
 
 	qdrant := qdrant_client.NewClient()
 	response := qdrant.Search("memory", vector, 1)

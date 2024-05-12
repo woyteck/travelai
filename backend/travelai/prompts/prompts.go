@@ -1,6 +1,10 @@
 package prompts
 
-import "woyteck.pl/travelai/openai"
+import (
+	"os"
+
+	"woyteck.pl/travelai/openai"
+)
 
 // classify user's intent
 func ClassifyQuestion(text string) string {
@@ -14,7 +18,10 @@ func ClassifyQuestion(text string) string {
 		{Role: "user", Content: text},
 	}
 
-	completions := openai.GetCompletionShort(messages, "gpt-3.5-turbo")
+	client := openai.New(openai.Config{
+		ApiKey: os.Getenv("OPENAI_API_KEY"),
+	})
+	completions := client.GetCompletionShort(messages, "gpt-3.5-turbo")
 	if len(completions.Choices) == 0 {
 		return ""
 	}
@@ -40,7 +47,10 @@ func SummarizeText(text string) string {
 		{Role: "user", Content: text},
 	}
 
-	completions := openai.GetCompletionShort(messages, "gpt-4")
+	client := openai.New(openai.Config{
+		ApiKey: os.Getenv("OPENAI_API_KEY"),
+	})
+	completions := client.GetCompletionShort(messages, "gpt-4")
 	if len(completions.Choices) == 0 {
 		return ""
 	}

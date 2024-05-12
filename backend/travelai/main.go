@@ -90,7 +90,7 @@ func startApi(db *sql.DB) {
 	r := gin.Default()
 
 	r.GET("/conversation", func(c *gin.Context) {
-		conv := openai.New(db, GetContext())
+		conv := openai.NewConversation(db, GetContext())
 
 		c.JSON(200, gin.H{
 			"conversation": conv,
@@ -146,8 +146,10 @@ func startApi(db *sql.DB) {
 				conv.Messages = append(conv.Messages, openai.Message{Role: "system", Content: additionalContext})
 			}
 		}
-
-		completions := openai.GetCompletionShort(conv.Messages, "gpt-4-turbo")
+		client := openai.New(openai.Config{
+			ApiKey: os.Getenv("OPENAI_API_KEY"),
+		})
+		completions := client.GetCompletionShort(conv.Messages, "gpt-4-turbo")
 		answer := completions.Choices[0].Message.Content
 		openai.AddMessaage(db, conv.Id, "assistant", answer)
 

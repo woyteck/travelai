@@ -11,6 +11,11 @@ import (
 	"os"
 )
 
+type Cacheable interface {
+	Get(key string) string
+	Set(key string, value string)
+}
+
 type ImageMessage struct {
 	Role    string    `json:"role"`
 	Content []Content `json:"content"`
@@ -154,7 +159,21 @@ type TranscriptionResponse struct {
 	Text string `json:"text"`
 }
 
-func GetCompletion(request CompletionRequest) CompletionResponse {
+type Config struct {
+	ApiKey string
+}
+
+type OpenAI struct {
+	Config Config
+}
+
+func New(config Config) OpenAI {
+	return OpenAI{
+		Config: config,
+	}
+}
+
+func (o *OpenAI) GetCompletion(request CompletionRequest) CompletionResponse {
 	url := "https://api.openai.com/v1/chat/completions"
 
 	postBody, _ := json.Marshal(request)
@@ -162,7 +181,7 @@ func GetCompletion(request CompletionRequest) CompletionResponse {
 	if err != nil {
 		log.Fatalf("Error occured %v", err)
 	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", os.Getenv("OPENAI_API_KEY")))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", o.Config.ApiKey))
 	req.Header.Add("Content-Type", "application/json")
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -186,7 +205,7 @@ func GetCompletion(request CompletionRequest) CompletionResponse {
 	return result
 }
 
-func GetImageCompletion(request ImageCompletionRequest) CompletionResponse {
+func (o *OpenAI) GetImageCompletion(request ImageCompletionRequest) CompletionResponse {
 	url := "https://api.openai.com/v1/chat/completions"
 
 	postBody, _ := json.Marshal(request)
@@ -194,7 +213,7 @@ func GetImageCompletion(request ImageCompletionRequest) CompletionResponse {
 	if err != nil {
 		log.Fatalf("Error occured %v", err)
 	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", os.Getenv("OPENAI_API_KEY")))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", o.Config.ApiKey))
 	req.Header.Add("Content-Type", "application/json")
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -218,25 +237,25 @@ func GetImageCompletion(request ImageCompletionRequest) CompletionResponse {
 	return result
 }
 
-func GetImageCompletionShort(messages []ImageMessage, model string) CompletionResponse {
+func (o *OpenAI) GetImageCompletionShort(messages []ImageMessage, model string) CompletionResponse {
 	request := ImageCompletionRequest{
 		Model:    model,
 		Messages: messages,
 	}
 
-	return GetImageCompletion(request)
+	return o.GetImageCompletion(request)
 }
 
-func GetCompletionShort(messages []Message, model string) CompletionResponse {
+func (o *OpenAI) GetCompletionShort(messages []Message, model string) CompletionResponse {
 	request := CompletionRequest{
 		Model:    model,
 		Messages: messages,
 	}
 
-	return GetCompletion(request)
+	return o.GetCompletion(request)
 }
 
-func GetModeration(input string) (bool, ModerationResponse) {
+func (o *OpenAI) GetModeration(input string) (bool, ModerationResponse) {
 	url := "https://api.openai.com/v1/moderations"
 
 	request := ModerationRequest{
@@ -275,7 +294,7 @@ func GetModeration(input string) (bool, ModerationResponse) {
 	return isFlagged, result
 }
 
-func GetEmbedding(input string, model string) []float64 {
+func (o *OpenAI) GetEmbedding(input string, model string) []float64 {
 	url := "https://api.openai.com/v1/embeddings"
 
 	request := EmbeddingRequest{
@@ -290,7 +309,7 @@ func GetEmbedding(input string, model string) []float64 {
 	if err != nil {
 		log.Fatalf("Error occured %v", err)
 	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", os.Getenv("OPENAI_API_KEY")))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", o.Config.ApiKey))
 	req.Header.Add("Content-Type", "application/json")
 
 	response, err := http.DefaultClient.Do(req)
@@ -313,7 +332,7 @@ func GetEmbedding(input string, model string) []float64 {
 	return result.Data[0].Embedding
 }
 
-func GetTranscription(file []byte, model string) string {
+func (o *OpenAI) GetTranscription(file []byte, model string) string {
 	url := "https://api.openai.com/v1/audio/transcriptions"
 
 	body := &bytes.Buffer{}
@@ -327,7 +346,7 @@ func GetTranscription(file []byte, model string) string {
 	if err != nil {
 		log.Fatalf("Error occured %v", err)
 	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", os.Getenv("OPENAI_API_KEY")))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %v", o.Config.ApiKey))
 	req.Header.Add("Content-Type", writer.FormDataContentType())
 
 	response, err := http.DefaultClient.Do(req)

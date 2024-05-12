@@ -13,7 +13,7 @@ type Conversation struct {
 	Messages []Message `json:"messages"`
 }
 
-func New(db *sql.DB, initialContext string) *Conversation {
+func NewConversation(db *sql.DB, initialContext string) *Conversation {
 	conv := Conversation{
 		db: db,
 		Id: uuid.New(),
@@ -63,13 +63,4 @@ func AddMessaage(db *sql.DB, conversationId uuid.UUID, role string, content stri
 	if err != nil {
 		fmt.Println(err)
 	}
-}
-
-func Print(db *sql.DB, convId uuid.UUID) {
-	conv := GetConversation(db, convId.String())
-	fmt.Println("#################")
-	for _, m := range conv.Messages {
-		fmt.Println(m.Role + ": " + m.Content)
-	}
-	fmt.Println("#################")
 }
