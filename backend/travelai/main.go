@@ -1,18 +1,29 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lpernett/godotenv"
+	"github.com/mkideal/cli"
 	"woyteck.pl/travelai/db"
 	"woyteck.pl/travelai/elevenlabs"
 	"woyteck.pl/travelai/memory"
 	"woyteck.pl/travelai/openai"
 	"woyteck.pl/travelai/prompts"
+	"woyteck.pl/travelai/scraper"
 )
+
+type argT struct {
+	cli.Helper
+	Mode          string `cli:"*mode" usage:"select mode: api | scrap"`
+	UrlToScrap    string `cli:"url" usage:"url to scrap"`
+	ScrapSelector string `cli:"selector" usage:"css selector to extract text from the page, for example: \".article-content p\""`
+}
 
 type Coords struct {
 	IsValid   bool    `json:"isValid"`
@@ -32,7 +43,50 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
+	// db := db.Connect()
+	// cache := cache.New(db)
+	// cache.ColelctGarbage()
+	// result := cache.Get("test")
+	// fmt.Println(result)
+	// if result == "" {
+	// 	cache.Set("test", "Lorem ipsum", time.Hour)
+	// }
+
+	os.Exit(cli.Run(new(argT), func(ctx *cli.Context) error {
+		argv := ctx.Argv().(*argT)
+		if argv.Mode == "api" {
+			db := db.Connect()
+			startApi(db)
+		}
+		if argv.Mode == "scrap" {
+			if argv.UrlToScrap == "" {
+				fmt.Println("url is required")
+			}
+			if argv.ScrapSelector == "" {
+				fmt.Println("scrap css selector is required")
+			}
+			err := scrapWebsite(argv.UrlToScrap, argv.ScrapSelector) // .article-content p
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		return nil
+	}))
+}
+
+func scrapWebsite(url string, selector string) error {
+	paragraphs, _ := scraper.ScrapWebPage(url, selector)
 	db := db.Connect()
+	err := memory.RememberArticle(db, paragraphs, url)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func startApi(db *sql.DB) {
 	r := gin.Default()
 
 	r.GET("/conversation", func(c *gin.Context) {
