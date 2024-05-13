@@ -2,6 +2,8 @@ package openai
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,11 +11,13 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 )
 
-type Cacheable interface {
+type CacheInterface interface {
 	Get(key string) string
-	Set(key string, value string)
+	Set(key string, value string, validityDuration time.Duration) error
 }
 
 type ImageMessage struct {
@@ -161,6 +165,7 @@ type TranscriptionResponse struct {
 
 type Config struct {
 	ApiKey string
+	Cache  CacheInterface
 }
 
 type OpenAI struct {
@@ -174,8 +179,22 @@ func New(config Config) OpenAI {
 }
 
 func (o *OpenAI) GetCompletion(request CompletionRequest) CompletionResponse {
-	url := "https://api.openai.com/v1/chat/completions"
+	text := fmt.Sprintf("%v", request)
+	cacheKey := createHash("openai.GetCompletion" + text)
+	if o.Config.Cache != nil {
+		cached := o.Config.Cache.Get(cacheKey)
+		if cached != "" {
+			var result CompletionResponse
+			err := json.Unmarshal([]byte(cached), &result)
+			if err != nil {
+				log.Fatal("Can not unmarshall JSON")
+			}
 
+			return result
+		}
+	}
+
+	url := "https://api.openai.com/v1/chat/completions"
 	postBody, _ := json.Marshal(request)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(postBody))
 	if err != nil {
@@ -192,9 +211,18 @@ func (o *OpenAI) GetCompletion(request CompletionRequest) CompletionResponse {
 	if response.StatusCode >= 400 {
 		body, err := io.ReadAll(response.Body)
 		if err != nil {
-			log.Fatal("Coult not read response")
+			log.Fatal("Could not read response")
 		}
 		fmt.Println(string(body))
+	}
+
+	if o.Config.Cache != nil {
+		buffer := new(strings.Builder)
+		_, err := io.Copy(buffer, response.Body)
+		if err != nil {
+			log.Fatal("Could not write json")
+		}
+		o.Config.Cache.Set(cacheKey, buffer.String(), time.Hour*24)
 	}
 
 	var result CompletionResponse
@@ -365,4 +393,10 @@ func (o *OpenAI) GetTranscription(file []byte, model string) string {
 	}
 
 	return result.Text
+}
+
+func createHash(text string) string {
+	hash := md5.Sum([]byte(text))
+
+	return hex.EncodeToString(hash[:])
 }

@@ -151,6 +151,7 @@ func startApi(db *sql.DB) {
 		}
 		client := openai.New(openai.Config{
 			ApiKey: os.Getenv("OPENAI_API_KEY"),
+			Cache:  &cache,
 		})
 		completions := client.GetCompletionShort(conv.Messages, "gpt-4-turbo")
 		answer := completions.Choices[0].Message.Content
