@@ -1,13 +1,37 @@
-package prompts
+package prompter
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"os"
+	"time"
 
 	"woyteck.pl/travelai/openai"
 )
 
+type Prompter struct {
+	cache CacheInterface
+}
+
+type CacheInterface interface {
+	Get(key string) string
+	Set(key string, value string, validityDuration time.Duration) error
+}
+
+func New(cache CacheInterface) Prompter {
+	return Prompter{
+		cache: cache,
+	}
+}
+
 // classify user's intent
-func ClassifyQuestion(text string) string {
+func (p *Prompter) ClassifyQuestion(text string) string {
+	cacheKey := createHash("prompter.ClassifyQuestion" + text)
+	cached := p.cache.Get(cacheKey)
+	if cached != "" {
+		return cached
+	}
+
 	context := "Klasyfikuję tekst w zależności od intencji użytkownika. Zawsze zwracam tylko nazwę intencji małymi literami bez żadnego formatowania."
 	context += "Dostępne intencje:"
 	context += "question - jeśli użytkownik zadaje pytanie"
@@ -26,11 +50,21 @@ func ClassifyQuestion(text string) string {
 		return ""
 	}
 
-	return completions.Choices[0].Message.Content
+	response := completions.Choices[0].Message.Content
+
+	p.cache.Set(cacheKey, response, time.Hour*24)
+
+	return response
 }
 
 // summarize text (paragraph) from scraped sources to save to memory
-func SummarizeText(text string) string {
+func (p *Prompter) SummarizeText(text string) string {
+	cacheKey := createHash("prompter.SummarizeText" + text)
+	cached := p.cache.Get(cacheKey)
+	if cached != "" {
+		return cached
+	}
+
 	context := "As a researcher, your job is to make a quick note based on the fragment provided by the user, that comes from the document"
 	context += "Rules:"
 	context += "- I skip the prefix \"Notatka\""
@@ -60,5 +94,13 @@ func SummarizeText(text string) string {
 		response = ""
 	}
 
+	p.cache.Set(cacheKey, response, time.Hour*24)
+
 	return response
+}
+
+func createHash(text string) string {
+	hash := md5.Sum([]byte(text))
+
+	return hex.EncodeToString(hash[:])
 }

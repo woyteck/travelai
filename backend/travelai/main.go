@@ -10,11 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/lpernett/godotenv"
 	"github.com/mkideal/cli"
+	"woyteck.pl/travelai/cache"
 	"woyteck.pl/travelai/db"
 	"woyteck.pl/travelai/elevenlabs"
 	"woyteck.pl/travelai/memory"
 	"woyteck.pl/travelai/openai"
-	"woyteck.pl/travelai/prompts"
+	prompter "woyteck.pl/travelai/prompter"
 	"woyteck.pl/travelai/scraper"
 )
 
@@ -125,7 +126,9 @@ func startApi(db *sql.DB) {
 		openai.AddMessaage(db, conv.Id, "user", request.Text)
 		conv.Messages = append(conv.Messages, openai.Message{Role: "user", Content: request.Text})
 
-		category := prompts.ClassifyQuestion(request.Text)
+		cache := cache.New(db)
+		prompter := prompter.New(&cache)
+		category := prompter.ClassifyQuestion(request.Text)
 		fmt.Println(category)
 		if category == "info" {
 			memory.Remember(request.Text)
