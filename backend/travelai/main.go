@@ -44,27 +44,19 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	// db := db.Connect()
-	// cache := cache.New(db)
-	// cache.ColelctGarbage()
-	// result := cache.Get("test")
-	// fmt.Println(result)
-	// if result == "" {
-	// 	cache.Set("test", "Lorem ipsum", time.Hour)
-	// }
-
 	os.Exit(cli.Run(new(argT), func(ctx *cli.Context) error {
 		argv := ctx.Argv().(*argT)
 		if argv.Mode == "api" {
 			db := db.Connect()
 			startApi(db)
 		}
+
 		if argv.Mode == "scrap" {
 			if argv.UrlToScrap == "" {
-				fmt.Println("url is required")
+				log.Fatal("url is required")
 			}
 			if argv.ScrapSelector == "" {
-				fmt.Println("scrap css selector is required")
+				log.Fatal("scrap css selector is required")
 			}
 			err := scrapWebsite(argv.UrlToScrap, argv.ScrapSelector) // .article-content p
 			if err != nil {
@@ -72,8 +64,64 @@ func main() {
 			}
 		}
 
+		if argv.Mode == "embed" {
+			db := db.Connect()
+			err := embedMemories(db)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
 		return nil
 	}))
+}
+
+func embedMemories(db *sql.DB) error {
+	fragmentsNotRefined, err := memory.GetNotRefinedFragments(db)
+	if err != nil {
+		return err
+	}
+
+	err = refineMemories(db, fragmentsNotRefined)
+	if err != nil {
+		return err
+	}
+
+	fragmentsNotEmbedded, err := memory.GetNotEmbeddedFragments(db)
+	if err != nil {
+		return err
+	}
+
+	memory.EmbedMemories(db, fragmentsNotEmbedded)
+
+	return nil
+}
+
+func refineMemories(db *sql.DB, fragments []memory.MemoryFragment) error {
+	cache := cache.New(db)
+	prompter := prompter.New(&cache)
+
+	for _, fragment := range fragments {
+		if fragment.ContentOriginal == "" {
+			continue
+		}
+
+		refinedText := prompter.SummarizeText(fragment.ContentOriginal)
+		if refinedText == "" {
+			continue
+		}
+
+		fragment.ContentRefined = refinedText
+		fragment.IsRefined = true
+		// fmt.Println(fragment.ContentOriginal)
+		// fmt.Println(fragment.ContentRefined)
+		err := memory.UpdateFragment(db, fragment)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func scrapWebsite(url string, selector string) error {
@@ -131,7 +179,7 @@ func startApi(db *sql.DB) {
 		category := prompter.ClassifyQuestion(request.Text)
 		fmt.Println(category)
 		if category == "info" {
-			memory.Remember(request.Text)
+			memory.Remember(request.Text, 0)
 			fmt.Println("remembered: ", request.Text)
 		}
 

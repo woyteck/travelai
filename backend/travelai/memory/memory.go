@@ -22,16 +22,27 @@ type Memory struct {
 	Content   string
 }
 
-func Remember(info string) {
+type MemoryFragment struct {
+	Id              int       `db:"id"`
+	CreatedAt       time.Time `db:"created_at"`
+	ContentOriginal string    `db:"content_original"`
+	ContentRefined  string    `db:"content_refined"`
+	IsRefined       bool      `db:"is_refined"`
+	IsEmbedded      bool      `db:"is_embedded"`
+	MemoryId        int       `db:"memory_id"`
+}
+
+func Remember(text string, fragmentId int) {
 	client := openai.New(openai.Config{
 		ApiKey: os.Getenv("OPENAI_API_KEY"),
 	})
-	vector := client.GetEmbedding(info, "text-embedding-ada-002")
+	vector := client.GetEmbedding(text, "text-embedding-ada-002")
 
 	qdrant := qdrant_client.NewClient()
 
 	payload := map[string]any{}
-	payload["info"] = info
+	payload["text"] = text
+	payload["fragment_id"] = fragmentId
 
 	qdrant.UpsertPoints("memory", vector, uuid.New(), payload)
 }
@@ -53,7 +64,7 @@ func Recall(text string) string {
 		return ""
 	}
 
-	return payload["info"].(string)
+	return payload["text"].(string)
 }
 
 func RememberArticle(db *sql.DB, paragraphs []string, url string) error {
@@ -85,6 +96,60 @@ func RememberArticle(db *sql.DB, paragraphs []string, url string) error {
 	}
 
 	return nil
+}
+
+func GetNotRefinedFragments(db *sql.DB) ([]MemoryFragment, error) {
+	rows, err := db.Query("SELECT id, created_at, content_original, content_refined, is_refined, is_embedded, memory_id FROM memory_fragments WHERE is_refined=false")
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	fragments := []MemoryFragment{}
+	for rows.Next() {
+		fragment := MemoryFragment{}
+		rows.Scan(&fragment.Id, &fragment.CreatedAt, &fragment.ContentOriginal, &fragment.ContentRefined, &fragment.IsRefined, &fragment.IsEmbedded, &fragment.MemoryId)
+		fragments = append(fragments, fragment)
+	}
+
+	return fragments, nil
+}
+
+func GetNotEmbeddedFragments(db *sql.DB) ([]MemoryFragment, error) {
+	rows, err := db.Query("SELECT id, created_at, content_original, content_refined, is_refined, is_embedded, memory_id FROM memory_fragments WHERE is_refined=true AND is_embedded=false AND content_refined != ''")
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	fragments := []MemoryFragment{}
+	for rows.Next() {
+		fragment := MemoryFragment{}
+		rows.Scan(&fragment.Id, &fragment.CreatedAt, &fragment.ContentOriginal, &fragment.ContentRefined, &fragment.IsRefined, &fragment.IsEmbedded, &fragment.MemoryId)
+		fragments = append(fragments, fragment)
+	}
+
+	return fragments, nil
+}
+
+func EmbedMemories(db *sql.DB, fragments []MemoryFragment) error {
+	for _, fragment := range fragments {
+		Remember(fragment.ContentRefined, fragment.Id)
+		fragment.IsEmbedded = true
+		err := UpdateFragment(db, fragment)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func UpdateFragment(db *sql.DB, fragment MemoryFragment) error {
+	_, err := db.Exec("UPDATE memory_fragments SET content_refined=$1, is_refined=$2, is_embedded=$3 WHERE id=$4", fragment.ContentRefined, fragment.IsRefined, fragment.IsEmbedded, fragment.Id)
+	return err
 }
 
 func articleExists(db *sql.DB, source string) bool {

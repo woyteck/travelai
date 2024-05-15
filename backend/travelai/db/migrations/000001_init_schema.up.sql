@@ -34,6 +34,7 @@ CREATE TABLE memory_fragments (
     content_original TEXT,
     content_refined TEXT,
     is_refined BOOLEAN DEFAULT false,
+    is_embedded BOOLEAN DEFAULT false,
     memory_id INT REFERENCES memories(id) ON DELETE CASCADE
 );
 
