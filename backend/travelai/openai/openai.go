@@ -69,22 +69,32 @@ type Param struct {
 	Enum        []string `json:"enum,omitempty"`
 }
 
+type CompletionRequestBase struct {
+	Model  string `json:"model"`
+	N      int    `json:"n,omitempty"`
+	Stream bool   `json:"stream,omitempty"`
+	User   string `json:"user,omitempty"`
+	Tools  []Tool `json:"tools"`
+}
+
 type CompletionRequest struct {
-	Model    string    `json:"model"`
+	CompletionRequestBase
+	// Model    string    `json:"model"`
 	Messages []Message `json:"messages"`
-	N        int       `json:"n,omitempty"`
-	Stream   bool      `json:"stream,omitempty"`
-	User     string    `json:"user,omitempty"`
-	Tools    []Tool    `json:"tools"`
+	// N        int       `json:"n,omitempty"`
+	// Stream   bool      `json:"stream,omitempty"`
+	// User     string    `json:"user,omitempty"`
+	// Tools    []Tool    `json:"tools"`
 }
 
 type ImageCompletionRequest struct {
-	Model    string         `json:"model"`
+	CompletionRequestBase
+	// Model    string         `json:"model"`
 	Messages []ImageMessage `json:"messages"`
-	N        int            `json:"n,omitempty"`
-	Stream   bool           `json:"stream,omitempty"`
-	User     string         `json:"user,omitempty"`
-	Tools    []Tool         `json:"tools"`
+	// N        int            `json:"n,omitempty"`
+	// Stream   bool           `json:"stream,omitempty"`
+	// User     string         `json:"user,omitempty"`
+	// Tools    []Tool         `json:"tools"`
 }
 
 type CompletionResponse struct {
@@ -267,18 +277,18 @@ func (o *OpenAI) GetImageCompletion(request ImageCompletionRequest) CompletionRe
 
 func (o *OpenAI) GetImageCompletionShort(messages []ImageMessage, model string) CompletionResponse {
 	request := ImageCompletionRequest{
-		Model:    model,
 		Messages: messages,
 	}
+	request.Model = model
 
 	return o.GetImageCompletion(request)
 }
 
 func (o *OpenAI) GetCompletionShort(messages []Message, model string) CompletionResponse {
 	request := CompletionRequest{
-		Model:    model,
 		Messages: messages,
 	}
+	request.Model = model
 
 	return o.GetCompletion(request)
 }
